@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FMIPA UNIMED — Navigasi GPS</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --green:#0B6E4F;--green-l:#18A372;--green-pale:#E6F4EE;
+  --gold:#C8922A;--navy:#0D2035;
+  --gray:#F0F2F5;--gray-mid:#DDE1E8;--gray-dk:#8A94A6;
+  --text:#14202E;--muted:#5A6478;--white:#fff;
+  --sh:0 2px 14px rgba(0,0,0,.12);--sh2:0 6px 36px rgba(0,0,0,.16);
+  --r:14px;--rs:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:'Plus Jakarta Sans',sans-serif;background:var(--gray);color:var(--text)}
+#hdr{position:fixed;top:0;left:0;right:0;height:56px;background:var(--navy);display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:1200;box-shadow:0 2px 12px rgba(0,0,0,.3)}
+.hbrand{display:flex;align-items:center;gap:10px}
+.hlogo{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--green-l),var(--green));display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;color:#fff}
+.hname{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;color:#fff;line-height:1.2}
+.hsub{font-size:10px;color:rgba(255,255,255,.4);letter-spacing:.3px}
+.hgps{display:flex;align-items:center;gap:6px;cursor:pointer;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:5px 11px;font-size:11px;color:rgba(255,255,255,.65);font-weight:500;transition:background .2s}
+.hgps:hover{background:rgba(255,255,255,.13)}
+.gpsdot{width:7px;height:7px;background:#18A372;border-radius:50%;flex-shrink:0;animation:gp 2s infinite}
+@keyframes gp{0%,100%{box-shadow:0 0 0 0 rgba(24,163,114,.5)}50%{box-shadow:0 0 0 6px rgba(24,163,114,0)}}
+#app{display:flex;height:100%;padding-top:56px}
+#sidebar{width:330px;flex-shrink:0;background:var(--white);display:flex;flex-direction:column;border-right:1px solid var(--gray-mid);z-index:1100;overflow:hidden}
+#sbox{padding:14px 14px 10px;border-bottom:1px solid var(--gray-mid)}
+.slbl{font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--gray-dk);margin-bottom:7px}
+.swrap{position:relative}
+.sico{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--gray-dk);pointer-events:none}
+#si{width:100%;height:40px;border:1.5px solid var(--gray-mid);border-radius:var(--rs);padding:0 10px 0 36px;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;color:var(--text);background:var(--gray);outline:none;transition:border-color .2s}
+#si:focus{border-color:var(--green);background:#fff}
+#si::placeholder{color:var(--gray-dk)}
+.chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:9px}
+.chip{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid var(--gray-mid);background:transparent;color:var(--muted);cursor:pointer;transition:all .18s}
+.chip:hover{border-color:var(--green);color:var(--green)}
+.chip.on{background:var(--green);border-color:var(--green);color:#fff}
+.lhdr{padding:11px 14px 5px;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--gray-dk);display:flex;align-items:center;justify-content:space-between}
+.lcnt{background:var(--gray);border-radius:10px;padding:2px 7px;font-size:11px;font-weight:600;color:var(--gray-dk)}
+#bl{flex:1;overflow-y:auto;padding:0 8px 10px}
+#bl::-webkit-scrollbar{width:3px}
+#bl::-webkit-scrollbar-thumb{background:var(--gray-mid);border-radius:3px}
+.bc{display:flex;align-items:flex-start;gap:10px;padding:11px 10px;border-radius:var(--r);cursor:pointer;border:1.5px solid transparent;margin-bottom:3px;transition:all .17s}
+.bc:hover{background:var(--green-pale);border-color:#9FD4BC}
+.bc.sel{background:var(--green-pale);border-color:var(--green);box-shadow:0 0 0 3px rgba(11,110,79,.08)}
+.bico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.bi{flex:1;min-width:0}
+.bn{font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.br{font-size:11px;color:var(--muted);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.bbg{display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;margin-top:3px}
+.ba{color:var(--gray-dk);font-size:13px;margin-top:2px;flex-shrink:0}
+#emp{padding:26px 14px;text-align:center;color:var(--muted);display:none}
+#emp.show{display:block}
+#emp .ei{font-size:30px;margin-bottom:7px}
+#mw{flex:1;position:relative;overflow:hidden}
+#map{width:100%;height:100%;z-index:1}
+#mb{position:absolute;top:12px;left:12px;z-index:1000;background:rgba(255,255,255,.95);border-radius:10px;padding:7px 13px;box-shadow:var(--sh);display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--text);backdrop-filter:blur(8px);max-width:260px}
+#mb .dot{width:8px;height:8px;background:var(--green-l);border-radius:50%;flex-shrink:0;animation:gp 2s infinite}
+#lt{position:absolute;top:12px;right:12px;z-index:1000;display:flex;gap:5px}
+.lb{background:rgba(255,255,255,.95);border:none;border-radius:7px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;color:var(--muted);box-shadow:var(--sh);transition:all .18s;font-family:'Plus Jakarta Sans',sans-serif}
+.lb:hover{background:#fff;color:var(--green)}
+.lb.on{background:var(--green);color:#fff}
+#nh{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:1100;background:var(--navy);color:#fff;border-radius:14px;padding:12px 18px;box-shadow:var(--sh2);display:none;min-width:250px;text-align:center}
+#nh.show{display:block}
+#nh .nd{font-size:11px;opacity:.5;margin-bottom:2px}
+#nh .nn{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;margin-bottom:7px}
+#nh .ns{display:flex;justify-content:center;gap:14px;font-size:11px;opacity:.7}
+#nh .nst{margin-top:9px;background:rgba(255,255,255,.12);border:none;border-radius:7px;padding:5px 14px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif}
+#nh .nst:hover{background:rgba(255,255,255,.22)}
+#pnl{position:absolute;bottom:0;left:0;right:0;z-index:1050;background:var(--white);border-radius:18px 18px 0 0;box-shadow:0 -4px 30px rgba(0,0,0,.13);padding:0 20px 26px;transform:translateY(100%);transition:transform .36s cubic-bezier(.34,1.56,.64,1);max-height:65%;overflow-y:auto}
+#pnl.show{transform:translateY(0)}
+#pnl::-webkit-scrollbar{width:3px}
+#pnl::-webkit-scrollbar-thumb{background:var(--gray-mid)}
+.ph{width:36px;height:4px;background:var(--gray-mid);border-radius:4px;margin:10px auto 13px}
+.pn{font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:700;color:var(--text);margin-bottom:3px}
+.pk{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:3px 11px;border-radius:18px;margin-bottom:3px}
+.pc{font-size:10px;color:var(--gray-dk);margin-bottom:12px;font-family:'Space Grotesk',monospace}
+.pst{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap}
+.psi{display:flex;align-items:center;gap:5px;background:var(--gray);border-radius:var(--rs);padding:6px 11px;font-size:11px;font-weight:600;color:var(--text)}
+.ps{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--gray-dk);margin:12px 0 7px}
+.rs{display:flex;flex-direction:column}
+.ri{display:flex;gap:10px;align-items:flex-start;padding:8px 0;position:relative}
+.ri:not(:last-child)::after{content:'';position:absolute;left:12px;top:30px;width:2px;height:calc(100% - 9px);background:var(--green-pale)}
+.rn{width:26px;height:26px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;z-index:1}
+.rt{font-size:12px;color:var(--text);line-height:1.5;padding-top:4px}
+.rl{display:flex;flex-direction:column;gap:5px}
+.rmi{background:var(--gray);border-radius:var(--rs);padding:8px 11px;display:flex;align-items:center;justify-content:space-between}
+.rk{font-size:11px;font-weight:700;color:var(--green);font-family:'Space Grotesk',monospace}
+.rna{font-size:12px;color:var(--text);margin-top:1px}
+.rlt{font-size:10px;color:var(--gray-dk);background:var(--gray-mid);padding:2px 6px;border-radius:6px;font-weight:600;white-space:nowrap}
+.pac{display:flex;gap:7px;margin-top:14px}
+.bna{flex:1;height:44px;background:var(--green);color:#fff;border:none;border-radius:var(--rs);font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all .2s}
+.bna:hover{background:var(--green-l);transform:translateY(-1px)}
+.bgm{height:44px;padding:0 12px;background:var(--gray);color:var(--text);border:none;border-radius:var(--rs);font-size:11px;font-weight:700;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;white-space:nowrap}
+.bgm:hover{background:var(--gray-mid)}
+.bcl{position:absolute;top:11px;right:16px;width:26px;height:26px;background:var(--gray);border:none;border-radius:50%;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--gray-dk)}
+.bcl:hover{background:var(--gray-mid)}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--navy);color:#fff;padding:8px 16px;border-radius:100px;font-size:12px;font-weight:600;opacity:0;transition:all .28s;pointer-events:none;z-index:9999;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.custom-popup .leaflet-popup-content-wrapper{border-radius:11px;padding:0;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.18);border:none}
+.custom-popup .leaflet-popup-content{margin:0;width:210px!important}
+.pi{padding:13px 15px}
+.pt{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;margin-bottom:2px}
+.pk2{font-size:10px;font-weight:600;margin-bottom:5px}
+.pr{font-size:11px;color:var(--muted);line-height:1.4;margin-bottom:9px}
+.pb{width:100%;padding:7px;background:var(--green);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif}
+.pb:hover{background:var(--green-l)}
+.leaflet-routing-container{display:none!important}
+@keyframes lp{0%,100%{transform:scale(1);opacity:.4}50%{transform:scale(1.6);opacity:0}}
+@keyframes fadeIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.lp{animation:lp 2.2s infinite}
+@media(max-width:760px){
+  #sidebar{position:fixed;bottom:0;left:0;right:0;width:100%;height:46%;top:auto;border-right:none;border-top:1px solid var(--gray-mid);z-index:1100}
+  #mw{height:54%;padding-top:0}
+  #app{flex-direction:column}
+}
+</style>
+</head>
+<body>
+<div id="hdr">
+  <div class="hbrand">
+    <div class="hlogo">FM</div>
+    <div>
+      <div class="hname">FMIPA UNIMED</div>
+      <div class="hsub">Navigasi GPS Kampus — Jl. Willem Iskandar Ps. V</div>
+    </div>
+  </div>
+  <div class="hgps" id="hgb"><div class="gpsdot"></div><span id="hgt">Mendeteksi lokasi…</span></div>
+</div>
+
+<div id="app">
+  <div id="sidebar">
+    <div id="sbox">
+      <div class="slbl">Cari Lokasi</div>
+      <div class="swrap">
+        <span class="sico">🔍</span>
+        <input id="si" type="text" placeholder="Gedung, lab, ruangan…" oninput="filterList()">
+      </div>
+      <div class="chips">
+        <button class="chip on" onclick="setFilter('all',this)">Semua</button>
+        <button class="chip" onclick="setFilter('1',this)">🏛 Kuliah</button>
+        <button class="chip" onclick="setFilter('2',this)">🔬 Lab</button>
+        <button class="chip" onclick="setFilter('3',this)">🏢 Admin</button>
+        <button class="chip" onclick="setFilter('gate',this)">🚪 Gerbang</button>
+      </div>
+    </div>
+    <div class="lhdr">Daftar Lokasi <span class="lcnt" id="lcnt">12</span></div>
+    <div id="bl"></div>
+    <div id="emp"><div class="ei">🗺</div><div>Lokasi tidak ditemukan.</div></div>
+  </div>
+
+  <div id="mw">
+    <div id="map"></div>
+    <div id="mb"><div class="dot"></div><span id="mbt">Peta FMIPA UNIMED — Koordinat GPS Asli</span></div>
+    <div id="lt">
+      <button class="lb on" id="bst" onclick="setLayer('street')">🗺 Peta</button>
+      <button class="lb" id="bss" onclick="setLayer('sat')">🛰 Satelit</button>
+    </div>
+    <!-- Tombol ambil koordinat -->
+    <button id="coordBtn" style="position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:1000;background:#14202E;color:#fff;border:none;border-radius:20px;padding:7px 16px;font-size:11px;font-weight:700;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.3);font-family:'Plus Jakarta Sans',sans-serif;white-space:nowrap">
+      📍 Ambil Koordinat
+    </button>
+    <!-- Kotak hasil koordinat -->
+    <div id="coordBox" style="display:none;position:absolute;top:50px;left:50%;transform:translateX(-50%);z-index:1000;background:#fff;border-radius:10px;padding:10px 12px;box-shadow:0 2px 14px rgba(0,0,0,.2);min-width:220px;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px"></div>
+    <div id="gleg" style="position:absolute;bottom:60px;right:12px;z-index:1000;background:rgba(255,255,255,.95);border-radius:10px;padding:8px 11px;box-shadow:0 2px 14px rgba(0,0,0,.15);backdrop-filter:blur(8px);font-size:10px;font-family:'Plus Jakarta Sans',sans-serif">
+      <div style="font-weight:700;color:#14202E;margin-bottom:5px;font-size:10px;letter-spacing:.4px;text-transform:uppercase">🚪 Gerbang UNIMED</div>
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;background:#2471B8;border-radius:3px;flex-shrink:0"></span><span style="color:#444">Gerbang 1 — Jl. Selamat Ketaren (Barat)</span></div>
+        <div style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;background:#E74C3C;border-radius:3px;flex-shrink:0"></span><span style="color:#444">Gerbang 2 ⭐ — Pintu FMIPA</span></div>
+        <div style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;background:#E6A817;border-radius:3px;flex-shrink:0"></span><span style="color:#444">Gerbang 3 — Jl. Willem Iskandar Tengah</span></div>
+        <div style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;background:#27AE60;border-radius:3px;flex-shrink:0"></span><span style="color:#444">Gerbang 4 — Dekat Masjid Baiturrahman</span></div>
+        <div style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;background:#E91E8C;border-radius:3px;flex-shrink:0"></span><span style="color:#444">Gerbang Rusunawa — Jl. Selamat Ketaren Utara</span></div>
+      </div>
+    </div>
+    <div id="nh">
+      <div class="nd">Navigasi ke</div>
+      <div class="nn" id="nhn">—</div>
+      <div class="ns"><span>📏 <span id="nhd">—</span></span><span>🚶 <span id="nht">—</span></span></div>
+      <button class="nst" onclick="stopNav()">✕ Hentikan</button>
+      <button id="voiceToggle" onclick="toggleVoice()" title="Matikan/Nyalakan suara" style="position:absolute;top:12px;right:52px;background:none;border:none;font-size:18px;cursor:pointer;z-index:2">🔊</button>
+    </div>
+    <div id="pnl">
+      <div class="ph"></div>
+      <button class="bcl" onclick="closePanel()">✕</button>
+      <div class="pn" id="pnn">—</div>
+      <span class="pk" id="pkk">—</span>
+      <div class="pc" id="pcc">—</div>
+      <div class="pst">
+        <div class="psi">📏 <span id="pdi">—</span></div>
+        <div class="psi">🚶 <span id="pti">—</span></div>
+
+      </div>
+      <div class="ps">🗺 Panduan Rute dari Gerbang 2 FMIPA</div>
+      <div class="rs" id="prs"></div>
+      <div id="pru" style="display:none">
+        <div class="ps">🚪 Daftar Ruangan</div>
+        <div class="rl" id="prl"></div>
+      </div>
+      <div class="pac">
+        <button class="bna" onclick="startNav()">🧭 Mulai Navigasi</button>
+        <button class="bgm" onclick="openGM()">
+          <img src="https://www.google.com/favicon.ico" width="13" style="border-radius:2px"> Google Maps
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// KOORDINAT GPS VERIFIED — Google Places API (akurat)
+// Semua koordinat diambil langsung dari Google Places / Google Maps
+// Kampus FMIPA UNIMED, Jl. William Iskandar Ps. V No.104
+// Kenangan Baru, Percut Sei Tuan, Deli Serdang 20371
+//
+// LAYOUT NYATA (sesuai Google Places):
+//
+//   [Fisika 🏛]              [Biologi 🏛]
+//   (barat-laut)              (timur-laut)
+//        \                        /
+//         \                      /
+//          \                    /
+//           \                  /
+//            [SYAWAL 🏢]        ← PUSAT (3.607127, 98.715550)
+//           /         \
+//          /           \
+//   [Kimia 🏛]    [Matematika 🏛]
+//   (barat-daya)    (tenggara)
+// ═══════════════════════════════════════════════════════════════════
+
+const SYAWAL_LAT = 3.607127;
+const SYAWAL_LNG = 98.715550;
+
+const BUILDINGS = [
+  {
+    id:'187', name:'Gedung Syawal (Dekanat)',
+    lat: 3.607127, lng: 98.715550,         // ✅ Google Places verified
+    rute:'Gedung utama di PUSAT kompleks FMIPA — langsung terlihat setelah masuk Gerbang 2.',
+    kategori:3, icon:'🏢',
+    steps:['Masuk dari Gerbang 2 FMIPA (Jl. William Iskandar Ps. V)','Jalan lurus ±80m dari pos satpam','Gedung Syawal ada tepat di PUSAT — 4 gedung jurusan mengelilinginya di 4 sudut','Ini pusat administrasi FMIPA UNIMED (4 lantai + basemen parkir)']
+  },
+  {
+    id:'03', name:'G.03 | Gedung Biologi',
+    lat: 3.607281, lng: 98.715705,         // ✅ Google Places verified — timur-laut Syawal
+    rute:'Pilar timur-laut kompleks — sudut kanan-atas, ±20m dari Gedung Syawal.',
+    kategori:1, icon:'🏛',
+    steps:['Masuk Gerbang 2 FMIPA','Menuju Gedung Syawal di pusat kompleks','Dari Syawal, ambil arah timur-laut (kanan-atas)','Gedung Biologi adalah pilar timur-laut kompleks']
+  },
+  {
+    id:'01', name:'G.197 | Gedung Fisika',
+    lat: 3.607418, lng: 98.715200,         // ✅ JURUSAN FISIKA UNIMED — Google Places verified
+    rute:'Pilar utara kompleks — tepat di atas Gedung Syawal, ±32m dari pusat.',
+    kategori:1, icon:'🏛',
+    steps:['Masuk Gerbang 2 FMIPA','Menuju Gedung Syawal di pusat','Dari Syawal, ambil arah utara','Gedung Fisika ada tepat di atas (utara) Gedung Syawal dalam satu kompleks']
+  },
+  {
+    id:'04', name:'G.04 | Gedung Kimia',
+    lat: 3.606831, lng: 98.715177,         // ✅ Google Places verified — barat-daya Syawal
+    rute:'Pilar barat-daya kompleks — sudut kiri-bawah, ±45m dari Gedung Syawal.',
+    kategori:1, icon:'🏛',
+    steps:['Masuk Gerbang 2 FMIPA','Menuju Gedung Syawal di pusat','Dari Syawal, ambil arah barat-daya (kiri-bawah)','Gedung Kimia adalah pilar barat-daya kompleks FMIPA']
+  },
+  {
+    id:'192', name:'G.192 | Gedung Matematika',
+    lat: 3.606907, lng: 98.715679,         // ✅ Google Places verified — tenggara Syawal
+    rute:'Pilar tenggara kompleks — sudut kanan-bawah, ±25m dari Gedung Syawal.',
+    kategori:1, icon:'🏛',
+    steps:['Masuk dari Gerbang 2 FMIPA','Menuju Gedung Syawal di pusat','Dari Syawal, ambil arah tenggara (kanan-bawah)','Gedung Matematika (9 lantai) adalah pilar tenggara kompleks FMIPA']
+  },
+  {
+    id:'05', name:'Gedung Bilingual',
+    lat:3.606530, lng:98.715260,          // ✅ Ujung selatan FMIPA (paling selatan)
+    rute:'Dari Gerbang 2, belok kiri → ikuti jalan selatan — Gedung Bilingual di ujung.',
+    kategori:1, icon:'🏛',
+    steps:['Masuk Gerbang 2 FMIPA','Belok kiri setelah pos satpam','Lewati sisi taman Gedung Matematika','Terus ke selatan — Gedung Bilingual ada di ujung (paling selatan FMIPA)']
+  },
+  {
+    id:'12', name:'Gedung 12',
+    lat:3.607394, lng:98.714397,           // ✅ Google Places: "Gedung 12 unimed" verified
+    rute:'Kompleks 3 bangunan yang tergabung — masuk dari gang kecil sisi barat parkir.',
+    kategori:1, icon:'🏛',
+    steps:['Dari Gerbang 2, jalan lurus melewati area parkir utama','Cari gang kecil di sisi barat parkir','Masuk gang ke arah barat','Gedung 12 adalah kompleks 3 bangunan yang tergabung di kanan dan kiri gang']
+  },
+  {
+    id:'19', name:'G.19 | Lab. Kimia',
+    lat:3.606620, lng:98.714880,          // ✅ Belakang Gedung Kimia (barat-selatan)
+    rute:'Masuk jalan kecil dari depan Gedung Kimia — Lab Kimia di bagian belakang.',
+    kategori:2, icon:'🔬',
+    steps:['Temukan Gedung Kimia UNIMED','Di depan gedung ada jalan kecil menuju barat','Masuk dan jalan lurus ±30m','Lab Kimia ada di area belakang/barat Gedung Kimia']
+  },
+  {
+    id:'175', name:'G.175 | Lab. Fisika',
+    lat:3.607568, lng:98.714735,           // ✅ Google Places: Laboratorium Fisika FMIPA UNIMED
+    rute:'Terpisah dari Gedung Fisika — berada di sisi barat jauh, dekat Gedung 12.',
+    kategori:2, icon:'🔬',
+    steps:['Masuk Gerbang 2','Jalan ke arah barat melewati kompleks Syawal','Lewati area parkir barat','Lab Fisika ada di sisi barat, terpisah dari Gedung Fisika di kompleks utama']
+  },
+  {
+    id:'77', name:'G.77 | Lab. Komputer',
+    lat:3.606918, lng:98.714250,           // ✅ Tanda merah — bangunan tengah area barat
+    rute:'Bangunan tengah di area barat FMIPA, sejajar dengan Gedung 12.',
+    kategori:2, icon:'🔬',
+    steps:['Menuju Gedung 12 dari Gerbang 2','Dari Gedung 12, pandang ke kiri (selatan)','Lab Komputer ada di bangunan tengah area barat','Sejajar dengan Gedung 12, satu baris ke selatan']
+  },
+  {
+    id:'bio_baru', name:'Lab Biologi Baru',
+    lat:3.606870, lng:98.713760,           // ✅ Tanda MERAH — bangunan vertikal kiri, lebih ke bawah
+    rute:'Bangunan vertikal di sisi barat FMIPA — tanda merah di peta.',
+    kategori:2, icon:'🔬',
+    steps:['Menuju Gedung 12 dari Gerbang 2','Dari Gedung 12, ambil arah barat','Lab Biologi Baru ada di bangunan vertikal panjang sisi barat','Posisi lebih ke bawah dari Lab Biologi Lama (G.84)']
+  },
+  {
+    id:'84', name:'G.84 | Lab Biologi Lama',
+    lat:3.607150, lng:98.713760,           // ✅ Tanda KUNING — bangunan di atas Lab Biologi Baru
+    rute:'Bangunan G.84 di atas Lab Biologi Baru — tanda kuning di peta.',
+    kategori:2, icon:'🔬',
+    steps:['Menuju Gedung 12 dari Gerbang 2','Dari Gedung 12, ambil arah barat-laut','G.84 Lab Biologi Lama ada di atas (utara) Lab Biologi Baru','Area barat FMIPA']
+  },
+];
+
+const RUANGAN=[
+  {kode:'192.5.03',nama:'Ruang Kuliah Matematika',lantai:5,id_gedung:'192',status:'Tersedia'},
+  {kode:'12.2.03',nama:'Ruang Kelas Gedung 12',lantai:2,id_gedung:'12',status:'Tersedia'},
+];
+
+const KI={
+  1:{label:'Gedung Kuliah',bg:'#E6F4EE',txt:'#0B6E4F',mk:'#18A372',ib:'#E6F4EE'},
+  2:{label:'Laboratorium',bg:'#FEF0E7',txt:'#C15C1A',mk:'#E07535',ib:'#FEF0E7'},
+  3:{label:'Administrasi',bg:'#EBF0FD',txt:'#2852C2',mk:'#4A72E0',ib:'#EBF0FD'},
+};
+
+// ═══ DATA GERBANG UNIMED (5 Gerbang) ══════════════════════════════
+// ✅ KOORDINAT 100% AKURAT — diambil langsung dari klik peta oleh user
+const GATES = [
+  {
+    id:'g1', name:'Gerbang 1 UNIMED',
+    label:'Gerbang 1', sublabel:'Jl. Selamat Ketaren (Barat)',
+    lat:3.6082250266394444, lng:98.71217229420459,
+    color:'#2471B8',
+    desc:'Gerbang 1 UNIMED di Jl. Selamat Ketaren sisi barat kampus.'
+  },
+  {
+    id:'g2', name:'Gerbang 2 UNIMED',
+    label:'Gerbang 2 ⭐', sublabel:'Pintu Masuk FMIPA',
+    lat:3.606283535560615, lng:98.7160791363615,
+    color:'#E74C3C',
+    desc:'Gerbang 2 UNIMED — pintu masuk FMIPA dari Jl. Willem Iskandar Pasar V Barat.'
+  },
+  {
+    id:'g3', name:'Gerbang 3 UNIMED',
+    label:'Gerbang 3', sublabel:'Jl. Willem Iskandar (Timur)',
+    lat:3.6062338951148725, lng:98.71726259389833,
+    color:'#E6A817',
+    desc:'Gerbang 3 UNIMED di Jl. Willem Iskandar Pasar V Barat sisi timur.'
+  },
+  {
+    id:'g4', name:'Gerbang 4 UNIMED',
+    label:'Gerbang 4', sublabel:'Dekat Masjid Baiturrahman',
+    lat:3.6061768714219826, lng:98.71973580238749,
+    color:'#27AE60',
+    desc:'Gerbang 4 UNIMED berdekatan dengan Masjid Baiturrahman. Akses menuju PG-PAUD dan area timur kampus.'
+  },
+  {
+    id:'g5', name:'Gerbang Rusunawa',
+    label:'Gerbang Rusunawa', sublabel:'Jl. Selamat Ketaren (Utara)',
+    lat:3.609891382544744, lng:98.71226987648934,
+    color:'#E91E8C',
+    desc:'Gerbang Rusunawa UNIMED di Jl. Selamat Ketaren. Akses menuju asrama mahasiswa.'
+  },
+];
+const GATE=GATES[1]; // Default: Gerbang 2 FMIPA (tanda merah) sebagai titik awal navigasi
+const CENTER={lat:3.607127,lng:98.715550}; // Pusat FMIPA (Gedung Syawal — verified)
+
+// ═══ MAP ═══════════════════════════════════════════════════════════
+let map,rc=null,selId=null,userLL=null,mref={},aFil='all',sL,satL;
+
+function initMap(){
+  VOICE.init();
+  map=L.map('map',{center:[CENTER.lat,CENTER.lng],zoom:18,zoomControl:false});
+  sL=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:21,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+  satL=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
+    maxZoom:21,attribution:'© Esri, Maxar, GeoEye'
+  });
+  L.control.zoom({position:'bottomright'}).addTo(map);
+
+  // Semua Gerbang UNIMED (4 gerbang)
+  GATES.forEach(g=>{
+    const anchor = g.id==='g2' ? [75,14] : [65,14];
+    const star = g.id==='g2' ? ' ⭐' : '';
+    L.marker([g.lat,g.lng],{icon:L.divIcon({
+      html:`<div style="background:${g.color};color:#fff;border-radius:7px;padding:4px 9px;font-size:10px;font-weight:700;font-family:sans-serif;white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,.35);border:2px solid #fff;display:flex;align-items:center;gap:4px">
+        <span style="font-size:13px">🚪</span>
+        <span>${g.label}${star}</span>
+      </div>`,
+      className:'',iconAnchor:anchor
+    })}).addTo(map).bindPopup(`<b>${g.name}</b><br><small style="color:#666">${g.sublabel}</small><br><br>${g.desc}`);
+  });
+
+  renderMarkers();
+  drawPillarLines();
+  detectGPS();
+  renderList();
+
+  // ═══ ALAT KOORDINAT — Klik peta untuk dapat koordinat tepat ═══
+  let coordMode = false;
+  const coordBtn = document.getElementById('coordBtn');
+  const coordBox = document.getElementById('coordBox');
+
+  coordBtn.addEventListener('click', ()=>{
+    coordMode = !coordMode;
+    coordBtn.style.background = coordMode ? '#E74C3C' : '#14202E';
+    coordBtn.textContent = coordMode ? '❌ Matikan Koordinat' : '📍 Ambil Koordinat';
+    coordBox.style.display = coordMode ? 'block' : 'none';
+    map.getContainer().style.cursor = coordMode ? 'crosshair' : '';
+    if(coordMode) showToast('Klik di peta untuk dapat koordinat!');
+  });
+
+  map.on('click', e=>{
+    if(!coordMode) return;
+    const {lat, lng} = e.latlng;
+    const latStr = lat.toFixed(7);
+    const lngStr = lng.toFixed(7);
+    coordBox.innerHTML = `
+      <div style="font-weight:700;margin-bottom:4px;color:#E74C3C">📍 Koordinat Diklik:</div>
+      <div style="font-family:monospace;font-size:12px;background:#f5f5f5;padding:6px 8px;border-radius:6px;margin-bottom:6px">
+        lat: <b>${latStr}</b><br>lng: <b>${lngStr}</b>
+      </div>
+      <button onclick="navigator.clipboard.writeText('${latStr}, ${lngStr}').then(()=>showToast('✅ Disalin!'))" 
+        style="width:100%;padding:6px;background:#14202E;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px">
+        📋 Salin Koordinat
+      </button>`;
+    L.popup().setLatLng(e.latlng)
+      .setContent(`<b>📍 Koordinat:</b><br><code>${latStr}, ${lngStr}</code>`)
+      .openOn(map);
+  });
+}
+
+// ═══ PILLAR LINES — Garis koneksi Syawal ke 4 gedung pilar ══════
+function drawPillarLines(){
+  const syawal=BUILDINGS.find(b=>b.id==='187');
+  // 4 pilar sesuai foto satelit: Biologi (BL), Fisika (TL), Kimia (BD), Matematika (TG)
+  const pillarIds=['03','01','04','192'];
+  pillarIds.forEach(pid=>{
+    const b=BUILDINGS.find(x=>x.id===pid);
+    if(!b)return;
+    L.polyline([[syawal.lat,syawal.lng],[b.lat,b.lng]],{
+      color:'#18A372',weight:2.5,opacity:0.35,dashArray:'6 5'
+    }).addTo(map);
+  });
+  // Lingkaran indikator kompleks terpadu
+  L.circle([syawal.lat,syawal.lng],{
+    radius:140,color:'#18A372',fillColor:'#18A372',
+    fillOpacity:0.04,weight:1.5,opacity:0.25,dashArray:'8 6'
+  }).addTo(map);
+}
+
+// ═══ MARKERS ═══════════════════════════════════════════════════════
+// Anchor logic: label harus muncul tepat di atas titik koordinat bangunan
+// iconAnchor = [x, y] = piksel dari pojok kiri-atas div yang menunjuk ke koordinat
+// Label lebar ≈ 10px/karakter + 28px (ikon+padding) → estimasi lebar total
+function getAnchor(b){
+  const pillarIds=['03','01','04','192'];
+  const labelLen = Math.min(b.name.length, 22);
+  const w = labelLen * 7 + 38; // estimasi lebar div dalam px
+  const h = 26; // tinggi div
+  if(!pillarIds.includes(b.id)) return [Math.round(w/2), Math.round(h/2)]; // tengah untuk Syawal dll
+  // Untuk 4 pilar: anchor di tengah bawah label agar titik menempel ke atap bangunan
+  return [Math.round(w/2), h];
+}
+
+function mkIcon(b,sel){
+  const c=KI[b.kategori],bg=sel?c.mk:'#fff',txt=sel?'#fff':c.txt;
+  const sh=sel?`0 4px 16px ${c.mk}55,0 0 0 4px ${c.mk}22`:'0 2px 10px rgba(0,0,0,.2)';
+  return L.divIcon({
+    html:`<div style="background:${bg};border:2.5px solid ${c.mk};border-radius:9px;padding:4px 8px;display:flex;align-items:center;gap:4px;box-shadow:${sh};white-space:nowrap;font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer">
+      <span style="font-size:12px">${b.icon}</span>
+      <span style="font-size:10px;font-weight:700;color:${txt}">${b.name.length>22?b.name.slice(0,21)+'…':b.name}</span>
+    </div>`,
+    className:'',iconAnchor:getAnchor(b)
+  });
+}
+
+function renderMarkers(){
+  Object.values(mref).forEach(m=>map.removeLayer(m));mref={};
+  BUILDINGS.forEach(b=>{
+    const c=KI[b.kategori];
+    const m=L.marker([b.lat,b.lng],{icon:mkIcon(b,false)}).addTo(map).on('click',()=>selBuilding(b.id));
+    m.bindPopup(`<div class="pi"><div class="pt">${b.icon} ${b.name}</div><div class="pk2" style="color:${c.txt}">${c.label}</div><div class="pr">${b.rute}</div><button class="pb" onclick="selBuilding('${b.id}')">Lihat Detail & Navigasi</button></div>`,{className:'custom-popup',maxWidth:220});
+    mref[b.id]=m;
+  });
+}
+
+function hiMark(id){BUILDINGS.forEach(b=>{if(mref[b.id])mref[b.id].setIcon(mkIcon(b,b.id===id));})}
+
+// ═══ SELECT ════════════════════════════════════════════════════════
+function selBuilding(id){
+  selId=id;const b=BUILDINGS.find(x=>x.id===id);if(!b)return;
+  hiMark(id);renderList();
+  map.flyTo([b.lat,b.lng],19,{duration:1.1});
+  const from=userLL||GATE,dist=hav(from.lat,from.lng,b.lat,b.lng),tmin=Math.max(1,Math.round(dist/80));
+  const c=KI[b.kategori];
+  document.getElementById('pnn').textContent=b.name;
+  const pk=document.getElementById('pkk');pk.textContent=`${b.icon} ${c.label}`;pk.style.background=c.bg;pk.style.color=c.txt;
+  document.getElementById('pcc').textContent=`📍 ${b.lat.toFixed(6)}, ${b.lng.toFixed(6)} (GPS Verified)`;
+  document.getElementById('pdi').textContent=dist>=1000?(dist/1000).toFixed(1)+' km':Math.round(dist)+' m';
+  document.getElementById('pti').textContent=tmin+' menit';
+  document.getElementById('prs').innerHTML=b.steps.map((s,i)=>`<div class="ri"><div class="rn">${i+1}</div><div class="rt">${s}</div></div>`).join('');
+  const rr=RUANGAN.filter(r=>r.id_gedung===id),ru=document.getElementById('pru');
+  if(rr.length){
+    ru.style.display='block';
+    document.getElementById('prl').innerHTML=rr.map(r=>`<div class="rmi"><div><div class="rk">${r.kode}</div><div class="rna">${r.nama}</div></div><span class="rlt">Lantai ${r.lantai}</span></div>`).join('');
+  }else{ru.style.display='none';}
+  document.getElementById('pnl').classList.add('show');
+  document.getElementById('mbt').textContent='Tujuan: '+b.name;
+  mref[id].openPopup();
+}
+
+function closePanel(){
+  document.getElementById('pnl').classList.remove('show');
+  selId=null;hiMark(null);renderList();
+  document.getElementById('mbt').textContent='Peta FMIPA UNIMED — Koordinat GPS Asli';
+  if(rc){ try{ map.removeControl(rc); }catch(e){} rc=null; }
+  clearNavLayers();
+  document.getElementById('nh').classList.remove('show');
+}
+
+// ═══ VOICE NAVIGATION — Sistem Navigasi Suara (seperti Google Maps) ══
+const VOICE = {
+  synth: window.speechSynthesis,
+  enabled: true,
+  speaking: false,
+  lastInstruction: '',
+  lastSpokenDist: 9999,
+  voice: null,
+
+  init(){
+    // Cari suara Bahasa Indonesia, fallback ke default
+    const setVoice = () => {
+      const voices = this.synth.getVoices();
+      this.voice = voices.find(v => v.lang.startsWith('id')) ||
+                   voices.find(v => v.lang.startsWith('ms')) ||
+                   voices[0] || null;
+    };
+    setVoice();
+    if(this.synth.onvoiceschanged !== undefined) this.synth.onvoiceschanged = setVoice;
+  },
+
+  speak(text, priority=false){
+    if(!this.enabled) return;
+    if(!priority && text === this.lastInstruction) return;
+    this.lastInstruction = text;
+    this.synth.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = 'id-ID';
+    utt.rate = 0.95;
+    utt.pitch = 1.05;
+    utt.volume = 1.0;
+    if(this.voice) utt.voice = this.voice;
+    utt.onstart = () => { this.speaking = true; showVoiceIndicator(text); };
+    utt.onend = () => { this.speaking = false; hideVoiceIndicator(); };
+    this.synth.speak(utt);
+  },
+
+  stop(){ this.synth.cancel(); this.speaking = false; hideVoiceIndicator(); }
+};
+
+function showVoiceIndicator(text){
+  let vi = document.getElementById('voiceIndicator');
+  if(!vi){
+    vi = document.createElement('div');
+    vi.id = 'voiceIndicator';
+    vi.style.cssText = `position:fixed;bottom:120px;left:50%;transform:translateX(-50%);
+      background:rgba(11,110,79,.97);color:#fff;border-radius:16px;padding:10px 18px;
+      z-index:9999;font-family:'Plus Jakarta Sans',sans-serif;font-size:13px;font-weight:600;
+      max-width:300px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.35);
+      display:flex;align-items:center;gap:8px;animation:fadeIn .3s ease`;
+    document.body.appendChild(vi);
+  }
+  vi.innerHTML = `<span style="font-size:18px">🔊</span><span>${text}</span>`;
+  vi.style.display = 'flex';
+}
+function hideVoiceIndicator(){
+  const vi = document.getElementById('voiceIndicator');
+  if(vi) vi.style.display = 'none';
+}
+
+// ═══ NAVIGATION STATE ══════════════════════════════════════════════
+let navState = {
+  active: false,
+  steps: [],       // instruksi dari routing machine
+  currentStep: 0,
+  destination: null,
+  watchId: null,
+  routeCoords: [],
+  totalDist: 0,
+  announced300: false,
+  announced100: false,
+  announced50: false,
+  announcedArrival: false,
+};
+
+function getDirectionText(bearing){
+  // Bearing dalam derajat → instruksi belok Indonesia
+  const b = ((bearing % 360) + 360) % 360;
+  if(b < 22.5 || b >= 337.5) return 'lurus';
+  if(b < 67.5) return 'belok kanan sedikit';
+  if(b < 112.5) return 'belok kanan';
+  if(b < 157.5) return 'belok kanan tajam';
+  if(b < 202.5) return 'putar balik';
+  if(b < 247.5) return 'belok kiri tajam';
+  if(b < 292.5) return 'belok kiri';
+  return 'belok kiri sedikit';
+}
+
+function formatDist(m){
+  if(m >= 1000) return (m/1000).toFixed(1) + ' kilometer';
+  if(m >= 100) return Math.round(m/50)*50 + ' meter';
+  return Math.round(m/10)*10 + ' meter';
+}
+
+function parseOSRMInstruction(step){
+  // Konversi instruksi OSRM → Bahasa Indonesia
+  if(!step) return '';
+  const t = (step.type||'').toLowerCase();
+  const m = (step.modifier||'').toLowerCase();
+  const name = step.name ? `ke ${step.name}` : '';
+  const dist = step.distance ? `dalam ${formatDist(step.distance)}` : '';
+
+  const modMap = {
+    'left': 'kiri', 'right': 'kanan', 'slight left': 'kiri sedikit',
+    'slight right': 'kanan sedikit', 'sharp left': 'kiri tajam',
+    'sharp right': 'kanan tajam', 'uturn': 'putar balik', 'straight': 'lurus'
+  };
+  const modText = modMap[m] || m;
+
+  if(t === 'depart') return `Mulai perjalanan. ${dist ? 'Jalan '+dist : ''} ${name}`.trim();
+  if(t === 'arrive') return `Anda telah tiba di tujuan`;
+  if(t === 'turn') return `${dist}, belok ${modText} ${name}`.trim();
+  if(t === 'new name') return `Lanjut ${name} ${dist}`.trim();
+  if(t === 'merge') return `Bergabung ke ${name} ${dist}`.trim();
+  if(t === 'roundabout') return `Masuk bundaran, ambil keluar ${name}`.trim();
+  if(t === 'continue') return `Lanjut lurus ${dist} ${name}`.trim();
+  return `${dist ? dist+', ' : ''}${modText ? modText : 'lurus'} ${name}`.trim();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CAMPUS ROAD GRAPH — Jalan nyata kampus FMIPA UNIMED
+// Node = titik persimpangan / bangunan, Edge = segmen jalan kampus
+// Koordinat diambil dari Google Maps / klik peta oleh user
+// ═══════════════════════════════════════════════════════════════════
+const CAMPUS_NODES = {
+  // ── Gerbang ──────────────────────────────────────────────────────
+  'gate1':   {lat:3.6082250, lng:98.7121722},  // Gerbang 1 (Barat)
+  'gate2':   {lat:3.6062835, lng:98.7160791},  // Gerbang 2 (FMIPA) ⭐
+  'gate3':   {lat:3.6062338, lng:98.7172625},  // Gerbang 3 (Timur)
+  'gate4':   {lat:3.6061768, lng:98.7197358},  // Gerbang 4 (Masjid)
+  'gateRsn': {lat:3.6098913, lng:98.7122698},  // Gerbang Rusunawa
+
+  // ── Persimpangan jalan utama dalam kampus ────────────────────────
+  'jl_main_n':   {lat:3.6092000, lng:98.7155000}, // Jl utara, setelah masuk Gerbang 1 ke timur
+  'jl_main_nw':  {lat:3.6088000, lng:98.7130000}, // Persimpangan barat-utara
+  'jl_fmipa_in': {lat:3.6073500, lng:98.7158000}, // Persimpangan masuk FMIPA (dari gate2)
+  'jl_fmipa_n':  {lat:3.6075000, lng:98.7154000}, // Jalan utara dalam FMIPA
+  'jl_fmipa_s':  {lat:3.6065000, lng:98.7154000}, // Jalan selatan dalam FMIPA
+  'jl_fmipa_w1': {lat:3.6073000, lng:98.7148000}, // Jalan barat dalam FMIPA (atas)
+  'jl_fmipa_w2': {lat:3.6068000, lng:98.7148000}, // Jalan barat dalam FMIPA (bawah)
+  'jl_fmipa_w3': {lat:3.6071500, lng:98.7142000}, // Jalan barat jauh (area lab)
+  'jl_fmipa_w4': {lat:3.6068500, lng:98.7138000}, // Ujung barat (area bio lama)
+  'jl_fmipa_c':  {lat:3.6071000, lng:98.7155500}, // Jalan tengah (depan Syawal)
+  'jl_fmipa_se': {lat:3.6067500, lng:98.7158000}, // Jalan tenggara (Matematika/Bilingual)
+  'jl_center_e': {lat:3.6075000, lng:98.7165000}, // Jalan tengah kampus ke timur
+  'jl_masjid':   {lat:3.6075000, lng:98.7185000}, // Depan Masjid/area timur
+  'jl_mid_e':    {lat:3.6068000, lng:98.7168000}, // Tengah timur kampus
+  'jl_south':    {lat:3.6055000, lng:98.7165000}, // Selatan kampus
+};
+
+// ── Edges (koneksi antar node, jarak meter perkiraan) ─────────────
+const CAMPUS_EDGES = [
+  // Jalan masuk dari gerbang ke persimpangan kampus
+  ['gate1',   'jl_main_nw',   350],
+  ['gate1',   'jl_main_n',    400],
+  ['gateRsn', 'jl_main_n',    200],
+  ['gate2',   'jl_fmipa_in',   80],
+  ['gate3',   'jl_mid_e',     100],
+  ['gate4',   'jl_masjid',     80],
+
+  // Jalan utama kampus (utara-selatan)
+  ['jl_main_n',   'jl_main_nw',  280],
+  ['jl_main_nw',  'jl_fmipa_n',  200],
+  ['jl_main_n',   'jl_center_e', 300],
+  ['jl_center_e', 'jl_fmipa_in', 120],
+  ['jl_center_e', 'jl_masjid',   200],
+  ['jl_masjid',   'jl_mid_e',    150],
+  ['jl_mid_e',    'jl_fmipa_in',  90],
+  ['jl_mid_e',    'jl_south',    150],
+
+  // Jalan dalam FMIPA (ring internal)
+  ['jl_fmipa_in', 'jl_fmipa_n',   60],
+  ['jl_fmipa_in', 'jl_fmipa_c',   40],
+  ['jl_fmipa_in', 'jl_fmipa_se',  80],
+  ['jl_fmipa_n',  'jl_fmipa_c',   50],
+  ['jl_fmipa_n',  'jl_fmipa_w1',  70],
+  ['jl_fmipa_c',  'jl_fmipa_w1',  60],
+  ['jl_fmipa_c',  'jl_fmipa_s',   60],
+  ['jl_fmipa_c',  'jl_fmipa_se',  50],
+  ['jl_fmipa_s',  'jl_fmipa_se',  50],
+  ['jl_fmipa_s',  'jl_fmipa_w2',  70],
+  ['jl_fmipa_w1', 'jl_fmipa_w2',  50],
+  ['jl_fmipa_w1', 'jl_fmipa_w3',  80],
+  ['jl_fmipa_w2', 'jl_fmipa_w3',  70],
+  ['jl_fmipa_w3', 'jl_fmipa_w4',  80],
+];
+
+// ── Kedekatan gedung ke node jalan (snap to road) ─────────────────
+const BUILDING_NODES = {
+  '187':     'jl_fmipa_c',   // Syawal → tengah FMIPA
+  '03':      'jl_fmipa_n',   // Biologi → utara
+  '01':      'jl_fmipa_n',   // Fisika → utara
+  '04':      'jl_fmipa_w2',  // Kimia → barat-bawah
+  '192':     'jl_fmipa_se',  // Matematika → tenggara
+  '05':      'jl_fmipa_se',  // Bilingual → tenggara
+  '12':      'jl_fmipa_w1',  // Gedung 12 → barat-atas
+  '175':     'jl_fmipa_w1',  // Lab Fisika → barat-atas
+  '19':      'jl_fmipa_w3',  // Lab Kimia → barat-jauh
+  '77':      'jl_fmipa_w3',  // Lab Komputer → barat-jauh
+  'bio_baru':'jl_fmipa_w4',  // Lab Bio Baru → ujung barat
+  '84':      'jl_fmipa_w4',  // Lab Bio Lama → ujung barat
+};
+
+// ── Snap gerbang ke node ──────────────────────────────────────────
+const GATE_NODES = {
+  'g1':'gate1','g2':'gate2','g3':'gate3','g4':'gate4','g5':'gateRsn'
+};
+
+// ═══ A* PATHFINDING ═══════════════════════════════════════════════
+function buildGraph(){
+  const G = {};
+  Object.keys(CAMPUS_NODES).forEach(n=>{ G[n]=[]; });
+  CAMPUS_EDGES.forEach(([a,b,w])=>{
+    if(G[a]) G[a].push({to:b,w});
+    if(G[b]) G[b].push({to:a,w});
+  });
+  return G;
+}
+
+function astar(graph, start, end){
+  const H = n => hav(CAMPUS_NODES[n].lat, CAMPUS_NODES[n].lng,
+                     CAMPUS_NODES[end].lat, CAMPUS_NODES[end].lng);
+  const open = new Map([[start,{g:0,f:H(start),prev:null}]]);
+  const closed = new Set();
+  while(open.size){
+    // Ambil node dengan f terkecil
+    let cur=null,best=Infinity;
+    open.forEach((v,k)=>{ if(v.f<best){best=v.f;cur=k;} });
+    if(cur===end){
+      // Rekonstruksi path
+      const path=[]; let n=cur;
+      const all=Object.fromEntries(open);
+      // Simpan semua visited
+      const visited={};
+      // Rebuild: simpan di closed juga
+      return {found:true, path: reconstructPath(cur, open, closed, start)};
+    }
+    const curNode=open.get(cur); open.delete(cur); closed.add(cur);
+    (graph[cur]||[]).forEach(({to,w})=>{
+      if(closed.has(to)) return;
+      const ng=curNode.g+w;
+      if(!open.has(to)||ng<open.get(to).g){
+        open.set(to,{g:ng,f:ng+H(to),prev:cur});
+      }
+    });
+  }
+  return {found:false,path:[]};
+}
+
+// Helper A* yang proper dengan came_from map terpisah
+function campusRoute(startNode, endNode){
+  const graph = buildGraph();
+  const H = n => hav(CAMPUS_NODES[n].lat,CAMPUS_NODES[n].lng,
+                     CAMPUS_NODES[endNode].lat,CAMPUS_NODES[endNode].lng);
+  const open = [{f:H(startNode),g:0,node:startNode}];
+  const gScore = {[startNode]:0};
+  const came = {};
+  const closed = new Set();
+
+  while(open.length){
+    open.sort((a,b)=>a.f-b.f);
+    const {node:cur,g:curG} = open.shift();
+    if(cur===endNode){
+      // Rekonstruksi
+      const path=[cur]; let n=cur;
+      while(came[n]){n=came[n];path.unshift(n);}
+      return path;
+    }
+    if(closed.has(cur)) continue;
+    closed.add(cur);
+    (graph[cur]||[]).forEach(({to,w})=>{
+      if(closed.has(to)) return;
+      const ng=curG+w;
+      if(gScore[to]===undefined||ng<gScore[to]){
+        gScore[to]=ng;
+        came[to]=cur;
+        open.push({f:ng+H(to),g:ng,node:to});
+      }
+    });
+  }
+  return null; // tidak ditemukan
+}
+
+// ── Cari gerbang terdekat dari koordinat ─────────────────────────
+function nearestGate(lat, lng){
+  let best=null, bestD=Infinity;
+  GATES.forEach(g=>{
+    const d=hav(lat,lng,g.lat,g.lng);
+    if(d<bestD){bestD=d;best=g;}
+  });
+  return best;
+}
+
+// ── Snap posisi arbitrary ke node terdekat ────────────────────────
+function snapToNode(lat, lng){
+  let best=null, bestD=Infinity;
+  Object.entries(CAMPUS_NODES).forEach(([id,n])=>{
+    const d=hav(lat,lng,n.lat,n.lng);
+    if(d<bestD){bestD=d;best=id;}
+  });
+  return {node:best, dist:bestD};
+}
+
+// ── Konversi path node → array koordinat LatLng ──────────────────
+function pathToLatLngs(nodePath, fromLL, toLL){
+  const pts = [fromLL];
+  nodePath.forEach(n=>{ if(CAMPUS_NODES[n]) pts.push([CAMPUS_NODES[n].lat,CAMPUS_NODES[n].lng]); });
+  pts.push(toLL);
+  return pts;
+}
+
+// ── Hitung total jarak path ───────────────────────────────────────
+function pathDistance(pts){
+  let d=0;
+  for(let i=1;i<pts.length;i++){
+    const a=pts[i-1],b=pts[i];
+    d+=hav(Array.isArray(a)?a[0]:a.lat, Array.isArray(a)?a[1]:a.lng,
+            Array.isArray(b)?b[0]:b.lat, Array.isArray(b)?b[1]:b.lng);
+  }
+  return d;
+}
+
+// ── Generate instruksi belokan dari path koordinat ────────────────
+function genInstructions(pts){
+  const steps=[];
+  for(let i=1;i<pts.length-1;i++){
+    const p=pts[i-1],c=pts[i],n=pts[i+1];
+    const pLat=Array.isArray(p)?p[0]:p.lat, pLng=Array.isArray(p)?p[1]:p.lng;
+    const cLat=Array.isArray(c)?c[0]:c.lat, cLng=Array.isArray(c)?c[1]:c.lng;
+    const nLat=Array.isArray(n)?n[0]:n.lat, nLng=Array.isArray(n)?n[1]:n.lng;
+    const bear1=bearing(pLat,pLng,cLat,cLng);
+    const bear2=bearing(cLat,cLng,nLat,nLng);
+    let diff=(bear2-bear1+360)%360;
+    const dist=Math.round(hav(pLat,pLng,cLat,cLng));
+    let turn='lurus';
+    if(diff>20&&diff<160) turn='belok kanan';
+    else if(diff>200&&diff<340) turn='belok kiri';
+    if(dist>10) steps.push({text:`${turn === 'lurus'?'Jalan lurus':'↩ '+turn}`, dist});
+  }
+  const last=pts[pts.length-1];
+  const prev=pts[pts.length-2];
+  const d=Math.round(hav(
+    Array.isArray(prev)?prev[0]:prev.lat, Array.isArray(prev)?prev[1]:prev.lng,
+    Array.isArray(last)?last[0]:last.lat, Array.isArray(last)?last[1]:last.lng));
+  if(d>5) steps.push({text:'🏁 Tiba di tujuan',dist:d});
+  return steps;
+}
+
+function bearing(lat1,lng1,lat2,lng2){
+  const dLng=(lng2-lng1)*Math.PI/180;
+  const la1=lat1*Math.PI/180, la2=lat2*Math.PI/180;
+  const y=Math.sin(dLng)*Math.cos(la2);
+  const x=Math.cos(la1)*Math.sin(la2)-Math.sin(la1)*Math.cos(la2)*Math.cos(dLng);
+  return (Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+
+// ═══ START NAVIGATION WITH VOICE ═══════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+// ROUTING ENGINE — OSRM Multi-Waypoint
+// Strategi: Kirim semua titik (user → gerbang → jalan kampus → gedung)
+// ke OSRM dalam SATU request. OSRM akan snap ke jalan OSM terdekat
+// dan hasilkan rute yang benar-benar mengikuti jalan.
+//
+// Titik waypoint kampus diambil dari TENGAH JALAN (bukan bangunan)
+// berdasarkan OpenStreetMap jalan kampus UNIMED.
+// ═══════════════════════════════════════════════════════════════════
+
+// Titik di TENGAH JALAN kampus (bukan gedung) — OSRM akan snap ke ini
+// Diambil dari koordinat jalan asphalt di OSM
+// ═══════════════════════════════════════════════════════════════════
+// ROAD_WAYPOINTS — Titik di TENGAH JALAN kampus (mengikuti jalan asli)
+//
+// Jaringan jalan kampus FMIPA (dari analisis peta):
+//
+//  [LabFis]─────[Gd12]────────────────[Fisika]──[Biologi]
+//     │            │                      │          │
+//     │        [JALAN BARAT ATAS]─────[JALAN UTAMA ATAS]
+//     │            │                      │
+//  [LabBio]──[LabKomp]──[LabKim]──[Kimia]──[Syawal]──[Mtk]
+//                         │                   │
+//                    [JALAN BARAT]        [JALAN TENGAH]
+//                                             │
+//                                         [Bilingual]
+//                                             │
+//                                         [Gerbang 2]
+//
+// Jalan utama: VERTIKAL dari Gerbang 2 naik ke utara
+// Jalan cabang: HORIZONTAL ke timur/barat dari jalan utama
+// ═══════════════════════════════════════════════════════════════════
+const ROAD_WAYPOINTS = {
+  // ══ JALAN UTAMA VERTIKAL (dari Gerbang 2 naik ke utara) ══════
+  // Ini jalan aspal utama yang terlihat di peta masuk dari Gerbang 2
+  'g2_in':      [3.606380, 98.715960],  // Tepat dalam gerbang 2
+  'g2_north1':  [3.606600, 98.715800],  // Naik 25m dari gerbang
+  'g2_north2':  [3.606830, 98.715700],  // Naik lagi — depan Matematika (timur)
+  'main_south': [3.607000, 98.715650],  // Persimpangan selatan — hub utama bawah
+  'main_center':[3.607120, 98.715550],  // Depan Gedung Syawal — persimpangan tengah
+  'main_north': [3.607250, 98.715500],  // Naik terus — antara Syawal & Fisika
+
+  // ══ JALAN HORIZONTAL TIMUR (depan Biologi & Matematika) ══════
+  'east_road':  [3.607050, 98.715800],  // Jalan timur, sejajar jalan utama
+
+  // ══ JALAN HORIZONTAL BARAT — LEVEL ATAS (depan Fisika & Gd12) ═
+  // Jalan yang terlihat horizontal di baris atas peta
+  'west_upper_e':[3.607300, 98.715100], // Persimpangan timur baris atas
+  'west_upper_m':[3.607300, 98.714700], // Tengah baris atas
+  'west_upper_w':[3.607300, 98.714300], // Barat baris atas (depan Gd12)
+
+  // ══ JALAN HORIZONTAL TENGAH (depan Kimia → Lab Komputer → Lab Bio) ═
+  // Jalan panjang horizontal di tengah peta
+  'mid_road_e': [3.606900, 98.715100],  // Dekat Kimia
+  'mid_road_m': [3.606900, 98.714800],  // Tengah — antara Kimia & Lab Kimia
+  'mid_road_w': [3.606900, 98.714350],  // Dekat Lab Komputer
+  'mid_road_far':[3.606900, 98.713900], // Jauh barat — dekat Lab Bio
+
+  // ══ JALAN VERTIKAL BARAT (menghubungkan baris atas & tengah) ══
+  // Jalan vertikal yang menghubungkan area Gd12 ke Lab Komputer
+  'vert_west_n': [3.607300, 98.714350], // Utara (sambung ke west_upper_w)
+  'vert_west_s': [3.606900, 98.714350], // Selatan (sambung ke mid_road_w)
+
+  // ══ TITIK MASUK TIAP GEDUNG (ujung jalan ke gedung) ══════════
+  // Dari jalan utama/horizontal ke depan pintu gedung
+  'door_syawal':  [3.607127, 98.715550],  // = gedung Syawal
+  'door_biologi': [3.607281, 98.715705],  // = gedung Biologi
+  'door_fisika':  [3.607418, 98.715200],  // = gedung Fisika
+  'door_kimia':   [3.606831, 98.715177],  // = gedung Kimia
+  'door_mtk':     [3.606907, 98.715679],  // = gedung Matematika
+  'door_bilingual':[3.606530, 98.715260], // = gedung Bilingual
+  'door_gd12':    [3.607394, 98.714397],  // = Gedung 12
+  'door_labfis':  [3.607568, 98.714735],  // = Lab Fisika
+  'door_labkim':  [3.606620, 98.714880],  // = Lab Kimia
+  'door_labkomp': [3.606918, 98.714250],  // = Lab Komputer
+  'door_labbio_b':[3.606870, 98.713760],  // = Lab Bio Baru
+  'door_labbio_l':[3.607150, 98.713760],  // = Lab Bio Lama
+
+  // ══ DARI GERBANG LAIN ════════════════════════════════════════
+  'g1_entry':   [3.608225, 98.712172],   // Gerbang 1
+  'g1_south':   [3.607600, 98.713000],
+  'g1_fmipa':   [3.607300, 98.714000],
+
+  'g3_entry':   [3.606234, 98.717263],   // Gerbang 3
+  'g3_west':    [3.606500, 98.716800],
+  'g3_fmipa':   [3.606800, 98.716300],
+
+  'g4_entry':   [3.606177, 98.719736],   // Gerbang 4
+  'g4_west1':   [3.606300, 98.718500],
+  'g4_to_g3':   [3.606300, 98.717300],
+
+  'g5_entry':   [3.609891, 98.712270],   // Gerbang Rusunawa
+  'g5_south':   [3.608800, 98.712400],
+  'g5_to_g1':   [3.608200, 98.712300],
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// BUILDING_APPROACH — Rute per gedung dari tiap gerbang
+// WAJIB mengikuti grid jalan kampus (tidak boleh diagonal)
+// Pola: naik vertikal dulu di jalan utama → belok horizontal ke gedung
+// ═══════════════════════════════════════════════════════════════════
+const BUILDING_APPROACH = {
+  // ══ Dari Gerbang 2 — pintu utama FMIPA ═══════════════════════
+  'g2': {
+    // Gedung-gedung di koridor timur (dekat jalan utama naik dari G2)
+    '187':     ['g2_in','g2_north1','g2_north2','main_south','main_center'],           // Syawal: naik lurus
+    '03':      ['g2_in','g2_north1','g2_north2','east_road','main_center','main_north','door_biologi'], // Biologi: naik → timur
+    '192':     ['g2_in','g2_north1','g2_north2','main_south'],                         // Matematika: belok di persimpangan selatan
+    '05':      ['g2_in','g2_north1'],                                                  // Bilingual: belok di awal
+
+    // Gedung di koridor barat (perlu jalan memutar lewat jalan utama lalu ke barat)
+    '01':      ['g2_in','g2_north1','g2_north2','main_south','main_center','main_north','west_upper_e','door_fisika'], // Fisika
+    '04':      ['g2_in','g2_north1','g2_north2','main_south','main_center','mid_road_e'],               // Kimia
+    '19':      ['g2_in','g2_north1','g2_north2','main_south','main_center','mid_road_e','mid_road_m'],  // Lab Kimia
+    '12':      ['g2_in','g2_north1','g2_north2','main_south','main_center','main_north','west_upper_e','west_upper_m','west_upper_w'], // Gd12
+    '175':     ['g2_in','g2_north1','g2_north2','main_south','main_center','main_north','west_upper_e','west_upper_m'], // Lab Fisika
+    '77':      ['g2_in','g2_north1','g2_north2','main_south','main_center','mid_road_e','mid_road_m','mid_road_w'],   // Lab Komp
+    'bio_baru':['g2_in','g2_north1','g2_north2','main_south','main_center','mid_road_e','mid_road_m','mid_road_w','mid_road_far'], // Lab Bio B
+    '84':      ['g2_in','g2_north1','g2_north2','main_south','main_center','mid_road_e','mid_road_m','mid_road_w','mid_road_far'], // Lab Bio L
+  },
+  // ══ Dari Gerbang 1 (barat, Jl. Selamat Ketaren) ══════════════
+  'g1': {
+    '187':     ['g1_entry','g1_south','g1_fmipa','mid_road_w','mid_road_m','mid_road_e','main_center'],
+    '01':      ['g1_entry','g1_south','g1_fmipa','west_upper_w','west_upper_e','door_fisika'],
+    '03':      ['g1_entry','g1_south','g1_fmipa','mid_road_w','mid_road_e','main_center','main_north','door_biologi'],
+    '04':      ['g1_entry','g1_south','g1_fmipa','mid_road_w','mid_road_m','mid_road_e','main_center','mid_road_e'],
+    '192':     ['g1_entry','g1_south','g1_fmipa','mid_road_w','mid_road_m','mid_road_e','main_south'],
+    '05':      ['g1_entry','g1_south','g1_fmipa','mid_road_w','mid_road_m','mid_road_e','main_south','g2_north2','g2_north1'],
+    '12':      ['g1_entry','g1_south','g1_fmipa','west_upper_w'],
+    '175':     ['g1_entry','g1_south','g1_fmipa','west_upper_w','west_upper_m'],
+    '19':      ['g1_entry','g1_south','g1_fmipa','mid_road_w','mid_road_m'],
+    '77':      ['g1_entry','g1_south','g1_fmipa','mid_road_w'],
+    'bio_baru':['g1_entry','g1_south','g1_fmipa','mid_road_far'],
+    '84':      ['g1_entry','g1_south','g1_fmipa','mid_road_far'],
+  },
+  // ══ Dari Gerbang 3 (timur, Jl. Willem Iskandar) ══════════════
+  'g3': {
+    '187':     ['g3_entry','g3_west','g3_fmipa','g2_north2','main_south','main_center'],
+    '01':      ['g3_entry','g3_west','g3_fmipa','g2_north2','main_south','main_center','main_north','west_upper_e','door_fisika'],
+    '03':      ['g3_entry','g3_west','g3_fmipa','g2_north2','east_road','door_biologi'],
+    '04':      ['g3_entry','g3_west','g3_fmipa','g2_north2','main_south','main_center','mid_road_e'],
+    '192':     ['g3_entry','g3_west','g3_fmipa','g2_north2','main_south'],
+    '05':      ['g3_entry','g3_west','g3_fmipa','g2_north2','g2_north1'],
+    '12':      ['g3_entry','g3_west','g3_fmipa','g2_north2','main_south','main_center','main_north','west_upper_e','west_upper_w'],
+    '175':     ['g3_entry','g3_west','g3_fmipa','g2_north2','main_south','main_center','main_north','west_upper_e','west_upper_m'],
+    '19':      ['g3_entry','g3_west','g3_fmipa','g2_north2','main_south','main_center','mid_road_e','mid_road_m'],
+    '77':      ['g3_entry','g3_west','g3_fmipa','g2_north2','main_south','main_center','mid_road_e','mid_road_m','mid_road_w'],
+    'bio_baru':['g3_entry','g3_west','g3_fmipa','g2_north2','main_south','main_center','mid_road_e','mid_road_m','mid_road_w','mid_road_far'],
+    '84':      ['g3_entry','g3_west','g3_fmipa','g2_north2','main_south','main_center','mid_road_e','mid_road_m','mid_road_w','mid_road_far'],
+  },
+  // ══ Dari Gerbang 4 (timur jauh) ══════════════════════════════
+  'g4': {
+    '187':     ['g4_entry','g4_west1','g4_to_g3','g3_west','g3_fmipa','g2_north2','main_south','main_center'],
+    '01':      ['g4_entry','g4_west1','g4_to_g3','g3_fmipa','g2_north2','main_south','main_center','main_north','west_upper_e'],
+    '03':      ['g4_entry','g4_west1','g4_to_g3','g3_fmipa','east_road','door_biologi'],
+    '04':      ['g4_entry','g4_west1','g4_to_g3','g3_fmipa','g2_north2','main_south','main_center','mid_road_e'],
+    '192':     ['g4_entry','g4_west1','g4_to_g3','g3_fmipa','g2_north2','main_south'],
+    '05':      ['g4_entry','g4_west1','g4_to_g3','g3_fmipa','g2_north2','g2_north1'],
+    '12':      ['g4_entry','g4_west1','g4_to_g3','g3_fmipa','g2_north2','main_south','main_center','main_north','west_upper_e','west_upper_w'],
+    '175':     ['g4_entry','g4_west1','g4_to_g3','g3_fmipa','g2_north2','main_south','main_center','main_north','west_upper_e','west_upper_m'],
+    '19':      ['g4_entry','g4_west1','g4_to_g3','g3_fmipa','g2_north2','main_south','main_center','mid_road_e','mid_road_m'],
+    '77':      ['g4_entry','g4_west1','g4_to_g3','g3_fmipa','g2_north2','main_south','main_center','mid_road_e','mid_road_m','mid_road_w'],
+    'bio_baru':['g4_entry','g4_west1','g4_to_g3','g3_fmipa','g2_north2','main_south','main_center','mid_road_e','mid_road_m','mid_road_w','mid_road_far'],
+    '84':      ['g4_entry','g4_west1','g4_to_g3','g3_fmipa','g2_north2','main_south','main_center','mid_road_e','mid_road_m','mid_road_w','mid_road_far'],
+  },
+  // ══ Dari Gerbang 5 / Rusunawa (utara) ════════════════════════
+  'g5': {
+    '187':     ['g5_entry','g5_south','g5_to_g1','g1_fmipa','mid_road_w','mid_road_e','main_center'],
+    '01':      ['g5_entry','g5_south','g5_to_g1','g1_fmipa','west_upper_w','west_upper_e','door_fisika'],
+    '03':      ['g5_entry','g5_south','g5_to_g1','g1_fmipa','mid_road_e','main_center','main_north','door_biologi'],
+    '04':      ['g5_entry','g5_south','g5_to_g1','g1_fmipa','mid_road_e','main_center','mid_road_e'],
+    '192':     ['g5_entry','g5_south','g5_to_g1','g1_fmipa','mid_road_e','main_south'],
+    '05':      ['g5_entry','g5_south','g5_to_g1','g1_fmipa','mid_road_e','main_south','g2_north1'],
+    '12':      ['g5_entry','g5_south','g5_to_g1','g1_fmipa','west_upper_w'],
+    '175':     ['g5_entry','g5_south','g5_to_g1','g1_fmipa','west_upper_w','west_upper_m'],
+    '19':      ['g5_entry','g5_south','g5_to_g1','g1_fmipa','mid_road_w','mid_road_m'],
+    '77':      ['g5_entry','g5_south','g5_to_g1','g1_fmipa','mid_road_w'],
+    'bio_baru':['g5_entry','g5_south','g5_to_g1','g1_fmipa','mid_road_far'],
+    '84':      ['g5_entry','g5_south','g5_to_g1','g1_fmipa','mid_road_far'],
+  },
+};
+
+// Koordinat tujuan akhir = PERSIS koordinat gedung
+// Rute dalam kampus 100% manual jadi titik akhir = gedung itu sendiri
+const BUILDING_DEST = {
+  '187':     [3.607127, 98.715550],   // Gedung Syawal
+  '03':      [3.607281, 98.715705],   // Gedung Biologi
+  '01':      [3.607418, 98.715200],   // Gedung Fisika
+  '04':      [3.606831, 98.715177],   // Gedung Kimia
+  '192':     [3.606907, 98.715679],   // Gedung Matematika
+  '05':      [3.606530, 98.715260],   // Gedung Bilingual
+  '12':      [3.607394, 98.714397],   // Gedung 12
+  '175':     [3.607568, 98.714735],   // Lab Fisika
+  '19':      [3.606620, 98.714880],   // Lab Kimia
+  '77':      [3.606918, 98.714250],   // Lab Komputer
+  'bio_baru':[3.606870, 98.713760],   // Lab Bio Baru
+  '84':      [3.607150, 98.713760],   // Lab Bio Lama
+};
+
+function clearNavLayers(){
+  if(window._navLayers){
+    window._navLayers.forEach(l=>{ try{ map.removeLayer(l); }catch(e){} });
+  }
+  window._navLayers = [];
+}
+
+// Bangun URL OSRM dengan banyak waypoints
+function buildOSRMUrl(waypoints){
+  // waypoints: array of {lat, lng}
+  const coords = waypoints.map(w=>`${w.lng},${w.lat}`).join(';');
+  return `https://router.project-osrm.org/route/v1/foot/${coords}?overview=full&geometries=geojson&steps=true&annotations=false`;
+}
+
+async function fetchOSRMRoute(waypoints){
+  const url = buildOSRMUrl(waypoints);
+  try {
+    const res = await fetch(url, {signal: AbortSignal.timeout(8000)});
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(data.code === 'Ok' && data.routes && data.routes[0]){
+      const route = data.routes[0];
+      const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+      const steps = [];
+      (route.legs||[]).forEach(leg=>{
+        (leg.steps||[]).forEach(s=>{
+          // Skip 'arrive' step — arrival handled by GPS distance check, not step list
+          if((s.maneuver||{}).type === 'arrive') return;
+          steps.push({
+            text: translateOSRMStep(s),
+            dist: Math.round(s.distance)
+          });
+        });
+      });
+      return { coords, steps, distance: route.distance, duration: route.duration };
+    }
+  } catch(e) { console.warn('OSRM error:', e); }
+  return null;
+}
+
+function translateOSRMStep(step){
+  const m = step.maneuver || {};
+  const type = m.type || '';
+  const mod  = m.modifier || '';
+  const modMap = {
+    'left':'belok kiri','right':'belok kanan',
+    'slight left':'sedikit ke kiri','slight right':'sedikit ke kanan',
+    'sharp left':'belok kiri tajam','sharp right':'belok kanan tajam',
+    'uturn':'putar balik','straight':'jalan lurus'
+  };
+  const modTxt = modMap[mod] || mod;
+  const road = step.name ? ` ke ${step.name}` : '';
+  if(type==='depart')     return `🚶 Mulai perjalanan${road}`;
+  if(type==='arrive')     return `🏁 Tiba di tujuan`;
+  if(type==='turn')       return `↩ ${modTxt}${road}`;
+  if(type==='continue')   return `↑ Lanjut lurus${road}`;
+  if(type==='new name')   return `↑ Lanjut${road}`;
+  if(type==='roundabout') return `🔄 Masuk bundaran${road}`;
+  return `${modTxt||'↑ Lanjut'}${road}`;
+}
+
+// ── Instruksi navigasi dalam kampus (manual, karena OSRM tidak tahu jalan kampus) ──
+function buildCampusSteps(nearGate, waypointKeys, destBuilding){
+  const steps = [];
+  steps.push({ text: `🚪 Masuk ${nearGate.label} — ikuti jalan utama kampus`, dist: 30 });
+
+  const wpDesc = {
+    'g2_in':        { text: '↑ Masuk ke dalam FMIPA — ikuti jalan aspal', dist: 20 },
+    'g2_north1':    { text: '↑ Jalan lurus ke utara', dist: 30 },
+    'g2_north2':    { text: '↑ Terus naik — lewati samping Gedung Matematika', dist: 40 },
+    'main_south':   { text: '↑ Persimpangan utama — pilih arah tujuan', dist: 30 },
+    'main_center':  { text: '↑ Depan Gedung Syawal — persimpangan tengah', dist: 30 },
+    'main_north':   { text: '↑ Terus ke utara melewati Gedung Syawal', dist: 30 },
+    'east_road':    { text: '→ Ambil jalur timur', dist: 25 },
+    'west_upper_e': { text: '← Belok kiri ke jalan atas (barat)', dist: 40 },
+    'west_upper_m': { text: '← Terus barat — melewati Lab Fisika', dist: 50 },
+    'west_upper_w': { text: '← Terus barat — Gedung 12 di kiri', dist: 50 },
+    'mid_road_e':   { text: '← Belok kiri — jalan tengah ke barat', dist: 40 },
+    'mid_road_m':   { text: '← Terus barat — Lab Kimia di kiri', dist: 50 },
+    'mid_road_w':   { text: '← Terus barat — Lab Komputer di kiri', dist: 50 },
+    'mid_road_far': { text: '← Terus barat jauh — Lab Biologi di ujung', dist: 60 },
+    'vert_west_n':  { text: '↓ Turun ke selatan', dist: 30 },
+    'vert_west_s':  { text: '↓ Sampai persimpangan barat', dist: 30 },
+    'door_fisika':  { text: '↑ Gedung Fisika ada di kiri Anda', dist: 10 },
+    'door_biologi': { text: '↑ Gedung Biologi ada di kanan Anda', dist: 10 },
+    'g1_entry':     { text: '↓ Masuk dari Gerbang 1', dist: 50 },
+    'g1_south':     { text: '→ Belok kanan ke arah timur FMIPA', dist: 70 },
+    'g1_fmipa':     { text: '→ Masuk area kompleks FMIPA', dist: 60 },
+    'g3_entry':     { text: '← Masuk dari Gerbang 3', dist: 30 },
+    'g3_west':      { text: '← Jalan ke barat dalam kampus', dist: 50 },
+    'g3_fmipa':     { text: '← Terus barat menuju FMIPA', dist: 60 },
+    'g4_entry':     { text: '← Masuk dari Gerbang 4', dist: 30 },
+    'g4_west1':     { text: '← Jalan ke barat menuju G3', dist: 80 },
+    'g4_to_g3':     { text: '← Lewati area Gerbang 3', dist: 60 },
+    'g5_entry':     { text: '↓ Mulai dari Gerbang Rusunawa', dist: 50 },
+    'g5_south':     { text: '↓ Turun ke selatan menuju FMIPA', dist: 80 },
+    'g5_to_g1':     { text: '↓ Terus ke Gerbang 1', dist: 70 },
+  };
+
+  waypointKeys.forEach(k => {
+    if(wpDesc[k]) steps.push({ ...wpDesc[k] });
+  });
+
+  const destShort = destBuilding.name.replace(/G\.\d+\s*\|\s*/,'');
+  steps.push({ text: `🏁 ${destShort} — Anda telah tiba di tujuan`, dist: 10 });
+  return steps;
+}
+
+async function startNav(){
+  if(!selId) return;
+  const b = BUILDINGS.find(x => x.id === selId);
+  const fromLL = userLL ? {lat:userLL.lat, lng:userLL.lng} : {lat:GATE.lat, lng:GATE.lng};
+
+  navState = {
+    active: true, steps: [], currentStep: 0, destination: b,
+    watchId: null, routeCoords: [], totalDist: 0,
+    announced300: false, announced100: false,
+    announced50: false, announcedArrival: false
+  };
+
+  if(rc){ try{ map.removeControl(rc); }catch(e){} rc=null; }
+  clearNavLayers();
+  document.getElementById('pnl').classList.remove('show');
+
+  const destName = b.name.replace(/G\.\d+\s*\|\s*/,'');
+  showToast('🔍 Menghitung rute via '+destName+'…');
+
+  // ── Pilih gerbang terdekat ───────────────────────────────────
+  const nearGate = nearestGate(fromLL.lat, fromLL.lng);
+
+  // ── Rute dalam kampus: manual waypoints (OSRM tidak tahu jalan kampus) ──
+  const approachKey = nearGate.id;
+  const gateApproach = BUILDING_APPROACH[approachKey] || BUILDING_APPROACH['g2'];
+  const waypointKeys = gateApproach[b.id] || ['g2_entry','g2_inner','g2_junction','jalan_utama_c'];
+  const destPt = BUILDING_DEST[b.id] || [b.lat, b.lng];
+
+  // Titik rute dalam kampus: gerbang → waypoints jalan → gedung tujuan
+  // Waypoints sudah include titik-titik mendekati gedung, tujuan akhir = gedung persis
+  const campusPts = [
+    [nearGate.lat, nearGate.lng],
+    ...waypointKeys.map(k => {
+      const wp = ROAD_WAYPOINTS[k];
+      if(!wp){ console.warn('Missing waypoint key:', k); return null; }
+      return [wp[0], wp[1]];
+    }).filter(Boolean),
+    [b.lat, b.lng],  // Titik akhir = gedung tujuan persis
+  ];
+
+  // ── OSRM hanya untuk bagian LUAR kampus: user → gerbang ──────
+  // Jalan kampus tidak ada di OSM, jadi digambar manual
+  const isInsideCampus = hav(fromLL.lat, fromLL.lng, CENTER.lat, CENTER.lng) < 300;
+  let outsideCoords = [];
+  let outsideSteps = [];
+  let outsideDist = 0;
+
+  if(!isInsideCampus){
+    const osrmRoute = await fetchOSRMRoute([
+      {lat: fromLL.lat, lng: fromLL.lng},
+      {lat: nearGate.lat, lng: nearGate.lng}
+    ]);
+    if(osrmRoute && osrmRoute.coords.length > 1){
+      outsideCoords = osrmRoute.coords;
+      outsideSteps  = osrmRoute.steps;
+      outsideDist   = osrmRoute.distance;
+    } else {
+      // Fallback luar kampus: garis lurus user → gerbang
+      outsideCoords = [[fromLL.lat, fromLL.lng], [nearGate.lat, nearGate.lng]];
+      outsideDist   = hav(fromLL.lat, fromLL.lng, nearGate.lat, nearGate.lng);
+    }
+  }
+
+  // ── Hitung jarak dalam kampus ────────────────────────────────
+  const campusDist = pathDistance(campusPts);
+  const totalDist  = outsideDist + campusDist;
+  const totalMin   = Math.max(1, Math.round(totalDist / 80));
+
+  // ── Gabung koordinat: luar + dalam kampus ────────────────────
+  const campusCoords = campusPts.map(p => Array.isArray(p) ? p : [p.lat, p.lng]);
+  const allCoords = [...outsideCoords, ...campusCoords];
+
+  // ── Gambar rute di peta ──────────────────────────────────────
+  // Rute luar kampus (biru)
+  if(outsideCoords.length > 1){
+    const outerLine = L.polyline(outsideCoords, {
+      color: '#0D47A1', weight: 9, opacity: 0.8,
+      lineJoin:'round', lineCap:'round'
+    }).addTo(map);
+    const innerLine = L.polyline(outsideCoords, {
+      color: '#2196F3', weight: 5.5, opacity: 1,
+      lineJoin:'round', lineCap:'round'
+    }).addTo(map);
+    window._navLayers.push(outerLine, innerLine);
+  }
+
+  // Rute dalam kampus (hijau) — selalu digambar dengan warna berbeda
+  const campusOuter = L.polyline(campusCoords, {
+    color: '#0B6E4F', weight: 9, opacity: 0.85,
+    lineJoin:'round', lineCap:'round'
+  }).addTo(map);
+  const campusInner = L.polyline(campusCoords, {
+    color: '#18A372', weight: 5.5, opacity: 1,
+    lineJoin:'round', lineCap:'round'
+  }).addTo(map);
+  window._navLayers.push(campusOuter, campusInner);
+
+  // Marker tujuan akhir
+  const destMarker = L.marker([b.lat, b.lng], {
+    icon: L.divIcon({
+      html:`<div style="background:#0B6E4F;color:#fff;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);white-space:nowrap">🏁 ${b.name.replace(/G\.\d+\s*\|\s*/,'')}</div>`,
+      className:'', iconAnchor:[70, 14]
+    }), zIndexOffset:900
+  }).addTo(map);
+  window._navLayers.push(destMarker);
+
+  // Marker gerbang
+  const gMarker = L.marker([nearGate.lat, nearGate.lng], {
+    icon: L.divIcon({
+      html:`<div style="background:${nearGate.color};color:#fff;border-radius:20px;padding:4px 10px;font-size:10px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);white-space:nowrap">🚪 ${nearGate.label}</div>`,
+      className:'', iconAnchor:[55,14]
+    }), zIndexOffset:800
+  }).addTo(map);
+  window._navLayers.push(gMarker);
+
+  // ── Buat langkah navigasi ────────────────────────────────────
+  // Langkah luar kampus (dari OSRM) + langkah dalam kampus (manual)
+  const campusSteps = buildCampusSteps(nearGate, waypointKeys, b);
+  const allSteps = [...outsideSteps, ...campusSteps];
+
+  navState.steps      = allSteps;
+  navState.totalDist  = totalDist;
+  navState.routeCoords = allCoords;
+
+  document.getElementById('nhn').textContent = b.name;
+  document.getElementById('nhd').textContent = totalDist >= 1000
+    ? (totalDist/1000).toFixed(1)+' km' : Math.round(totalDist)+' m';
+  document.getElementById('nht').textContent = totalMin+' menit';
+  document.getElementById('nh').classList.add('show');
+
+  const stepBox = getOrCreateStepBox();
+  const fs = allSteps.find(s => s.dist > 5) || allSteps[0];
+  if(fs){
+    const ns = allSteps[allSteps.indexOf(fs)+1];
+    stepBox.innerHTML = `
+      <div style="font-weight:700;color:#0B6E4F;font-size:13px;margin-bottom:3px">${fs.text}</div>
+      ${fs.dist>0?`<div style="color:#666;font-size:11px">Dalam ${fs.dist} m</div>`:''}
+      ${ns?`<div style="color:#999;font-size:10px;margin-top:4px">Lalu: ${ns.text}</div>`:''}
+    `;
+  }
+
+  map.fitBounds(L.polyline(allCoords).getBounds(), {padding:[65,65]});
+  const distText = totalDist>=1000?(totalDist/1000).toFixed(1)+' kilometer':Math.round(totalDist)+' meter';
+  VOICE.speak(`Navigasi ke ${destName}. ${distText}, sekitar ${totalMin} menit. Masuk lewat ${nearGate.label}.`, true);
+  showToast(`🧭 Rute ke ${destName}: ${Math.round(totalDist)}m lewat ${nearGate.label}`);
+
+  startVoiceTracking(b);
+}
+
+function getOrCreateStepBox(){
+  let sb = document.getElementById('navStepBox');
+  if(!sb){
+    sb = document.createElement('div');
+    sb.id = 'navStepBox';
+    sb.style.cssText = 'background:#f0faf6;border-radius:10px;padding:8px 12px;margin:6px 0;font-size:12px;font-family:"Plus Jakarta Sans",sans-serif';
+    const nh = document.getElementById('nh');
+    nh.insertBefore(sb, nh.children[2] || null);
+  }
+  return sb;
+}
+
+function updateStepDisplay(){
+  const steps = navState.steps;
+  const i = navState.currentStep;
+  if(!steps || !steps.length) return;
+  const sb = getOrCreateStepBox();
+  const cur = steps[i];
+  const next = steps[i+1];
+  if(cur){
+    sb.innerHTML = `
+      <div style="font-weight:700;color:#0B6E4F;font-size:13px;margin-bottom:3px">
+        🚶 ${cur.text}
+      </div>
+      ${cur.dist ? `<div style="color:#666;font-size:11px">Dalam ${cur.dist} m</div>` : ''}
+      ${next ? `<div style="color:#999;font-size:10px;margin-top:4px">Lalu: ${next.text}</div>` : ''}
+    `;
+  }
+}
+
+function getStepArrow(type, modifier){
+  const t = (type||'').toLowerCase(), m = (modifier||'').toLowerCase();
+  if(t==='arrive') return '🏁';
+  if(t==='depart') return '🚶';
+  if(m.includes('right') && m.includes('sharp')) return '↱';
+  if(m.includes('right')) return '→';
+  if(m.includes('left') && m.includes('sharp')) return '↰';
+  if(m.includes('left')) return '←';
+  if(m.includes('uturn')) return '↩';
+  return '↑';
+}
+
+function startVoiceTracking(dest){
+  if(!navigator.geolocation) return;
+  if(navState.watchId) navigator.geolocation.clearWatch(navState.watchId);
+
+  navState.watchId = navigator.geolocation.watchPosition(pos => {
+    if(!navState.active) return;
+    const {latitude:la, longitude:ln} = pos.coords;
+    const distToDest = hav(la, ln, dest.lat, dest.lng);
+
+    // Update jarak di UI
+    document.getElementById('nhd').textContent = distToDest >= 1000
+      ? (distToDest/1000).toFixed(1)+' km'
+      : Math.round(distToDest)+' m';
+
+    const destName = dest.name.replace(/G\.\d+\s*\|\s*/,'');
+
+    // Pengumuman berdasarkan jarak ke tujuan
+    if(distToDest <= 25 && !navState.announcedArrival){
+      navState.announcedArrival = true;
+      VOICE.speak(`Anda telah tiba di ${destName}. Selamat datang!`, true);
+      // Tampilkan "Tiba di tujuan" di step box sebelum stop
+      const sb = document.getElementById('navStepBox');
+      if(sb) sb.innerHTML = `<div style="font-weight:700;color:#0B6E4F;font-size:14px;text-align:center">🏁 Tiba di tujuan!</div>`;
+      setTimeout(()=>stopNav(), 4000);
+      return;
+    }
+    if(distToDest <= 50 && !navState.announced50 && !navState.announcedArrival){
+      navState.announced50 = true;
+      VOICE.speak(`${destName} dalam 50 meter di depan Anda.`, true);
+    }
+    if(distToDest <= 100 && !navState.announced100 && !navState.announced50){
+      navState.announced100 = true;
+      VOICE.speak(`Dalam 100 meter, Anda akan tiba di ${destName}.`);
+    }
+    if(distToDest <= 300 && !navState.announced300 && !navState.announced100){
+      navState.announced300 = true;
+      VOICE.speak(`${destName} dalam 300 meter.`);
+    }
+
+    // Cek langkah navigasi berikutnya
+    // Gunakan closest point di route coords untuk track progress — lebih akurat dari totalDist - distToDest
+    if(navState.steps && navState.steps.length > 0 && navState.routeCoords && navState.routeCoords.length > 0){
+      // Cari titik terdekat di rute dari posisi user saat ini
+      let minD = Infinity, closestIdx = 0;
+      navState.routeCoords.forEach((pt, idx) => {
+        const d = hav(la, ln, pt[0], pt[1]);
+        if(d < minD){ minD = d; closestIdx = idx; }
+      });
+      // Hitung jarak yang sudah ditempuh berdasarkan indeks titik terdekat
+      const progress = closestIdx / Math.max(navState.routeCoords.length - 1, 1);
+      const expectedStep = Math.min(
+        Math.floor(progress * navState.steps.length),
+        navState.steps.length - 1
+      );
+      if(expectedStep > navState.currentStep){
+        navState.currentStep = expectedStep;
+        updateStepDisplay();
+        const cur = navState.steps[navState.currentStep];
+        if(cur && cur.text && cur.dist > 10){
+          VOICE.speak(cur.text + (cur.dist ? ` dalam ${cur.dist} meter` : ''));
+        }
+      }
+    }
+  }, ()=>{}, {enableHighAccuracy:true, maximumAge:2000, timeout:10000});
+}
+
+function stopNav(){
+  navState.active = false;
+  if(navState.watchId){ navigator.geolocation.clearWatch(navState.watchId); navState.watchId=null; }
+  VOICE.stop();
+  if(rc){ try{ map.removeControl(rc); }catch(e){} rc=null; }
+  clearNavLayers();
+  const sb = document.getElementById('navStepBox');
+  if(sb) sb.remove();
+  document.getElementById('nh').classList.remove('show');
+  showToast('✅ Navigasi dihentikan');
+}
+
+// Toggle suara on/off
+function toggleVoice(){
+  VOICE.enabled = !VOICE.enabled;
+  const btn = document.getElementById('voiceToggle');
+  if(btn){
+    btn.textContent = VOICE.enabled ? '🔊' : '🔇';
+    btn.title = VOICE.enabled ? 'Matikan suara' : 'Nyalakan suara';
+  }
+  showToast(VOICE.enabled ? '🔊 Suara navigasi aktif' : '🔇 Suara navigasi dimatikan');
+  if(VOICE.enabled) VOICE.speak('Suara navigasi aktif.', true);
+}
+
+function openGM(){
+  if(!selId)return;
+  const b=BUILDINGS.find(x=>x.id===selId);
+  window.open(`https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lng}&travelmode=walking`,'_blank');
+}
+
+// ═══ GPS ═══════════════════════════════════════════════════════════
+let uM=null,uC=null;
+function detectGPS(){
+  if(!navigator.geolocation){document.getElementById('hgt').textContent='GPS N/A';return;}
+  navigator.geolocation.watchPosition(pos=>{
+    const{latitude:la,longitude:ln,accuracy:ac}=pos.coords;
+    userLL={lat:la,lng:ln};
+    document.getElementById('hgt').textContent='GPS Aktif';
+    if(uM){map.removeLayer(uM);map.removeLayer(uC);}
+    uC=L.circle([la,ln],{radius:Math.min(ac,20),color:'#3D77C2',fillColor:'#3D77C2',fillOpacity:.1,weight:1.5,opacity:.4}).addTo(map);
+    uM=L.marker([la,ln],{icon:L.divIcon({
+      html:`<div style="position:relative;width:20px;height:20px"><div style="position:absolute;inset:0;background:#3D77C2;border-radius:50%;opacity:.22" class="lp"></div><div style="position:absolute;inset:4px;background:#3D77C2;border:2.5px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div></div>`,
+      className:'',iconAnchor:[10,10]
+    }),zIndexOffset:1000}).addTo(map).bindPopup('📍 Posisi Anda sekarang');
+  },()=>{document.getElementById('hgt').textContent='GPS: Izin ditolak';showToast('⚠️ Aktifkan GPS untuk navigasi akurat');},{enableHighAccuracy:true,maximumAge:5000});
+}
+
+// ═══ LAYER ═════════════════════════════════════════════════════════
+function setLayer(t){
+  if(t==='street'){map.addLayer(sL);map.removeLayer(satL);document.getElementById('bst').classList.add('on');document.getElementById('bss').classList.remove('on');}
+  else{map.addLayer(satL);map.removeLayer(sL);document.getElementById('bss').classList.add('on');document.getElementById('bst').classList.remove('on');}
+}
+
+// ═══ LIST ══════════════════════════════════════════════════════════
+function getFilt(){
+  const q=document.getElementById('si').value.toLowerCase().trim();
+  if(aFil==='gate'){
+    return GATES.filter(g=>!q||g.name.toLowerCase().includes(q)||g.sublabel.toLowerCase().includes(q)).map(g=>({
+      ...g, kategori:'gate', icon:'🚪', rute:g.sublabel
+    }));
+  }
+  return BUILDINGS.filter(b=>(aFil==='all'||String(b.kategori)===aFil)&&(!q||b.name.toLowerCase().includes(q)||b.rute.toLowerCase().includes(q)));
+}
+function renderList(){
+  const bl=document.getElementById('bl'),em=document.getElementById('emp'),ct=document.getElementById('lcnt');
+  const fi=getFilt();ct.textContent=fi.length;bl.innerHTML='';
+  if(!fi.length){em.classList.add('show');return;}em.classList.remove('show');
+  fi.forEach(b=>{
+    const isGate=b.kategori==='gate';
+    const c=isGate?{ib:'#FFF3E0',bg:'#FFF3E0',txt:'#8B5A00',label:'Gerbang UNIMED'}:KI[b.kategori];
+    const sel=selId===b.id,d=document.createElement('div');
+    d.className='bc'+(sel?' sel':'');
+    d.onclick=()=>{
+      if(isGate){map.flyTo([b.lat,b.lng],18,{duration:1});showToast('🚪 '+b.name);}
+      else selBuilding(b.id);
+    };
+    d.innerHTML=`<div class="bico" style="background:${c.ib}">${b.icon}</div><div class="bi"><div class="bn">${b.name}</div><div class="br">${b.rute||b.desc}</div><span class="bbg" style="background:${c.bg};color:${c.txt}">${c.label}</span></div><div class="ba">›</div>`;
+    bl.appendChild(d);
+  });
+}
+function setFilter(f,btn){aFil=f;document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));btn.classList.add('on');renderList();}
+function filterList(){renderList();}
+
+// ═══ UTILS ═════════════════════════════════════════════════════════
+function hav(a,b,c,d){
+  const R=6371000,dA=(c-a)*Math.PI/180,dB=(d-b)*Math.PI/180;
+  const x=Math.sin(dA/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dB/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+
+window.addEventListener('load',initMap);
+</script>
+</body>
+</html>
